@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.text.TextUtils
 import android.util.Log
+import android.widget.Toast
 import androidx.preference.PreferenceManager
 import com.google.gson.Gson
 import com.tencent.mmkv.MMKV
@@ -330,6 +331,15 @@ object AngConfigManager {
                         queryParam["host"], queryParam["path"], queryParam["seed"], queryParam["quicSecurity"], queryParam["key"],
                         queryParam["mode"], queryParam["serviceName"])
                 streamSetting.populateTlsSettings(queryParam["security"] ?: "", allowInsecure, queryParam["sni"] ?: sni)
+            } else if (str.startsWith(EConfigType.RAW.protocolScheme)) {
+                //解析
+                val uri = URI(Utils.fixIllegalUrl(str))
+                val queryParam = uri.rawQuery.split("&")
+                    .associate { it.split("=").let { (k, v) -> k to Utils.urlDecode(v) } }
+
+                config = ServerConfig.create(EConfigType.CUSTOM)
+                config.remarks = uri.host
+                config.fullConfig = Gson().fromJson(queryParam["config"], V2rayConfig::class.java)
             }
             if (config == null){
                 return R.string.toast_incorrect_protocol
@@ -476,6 +486,7 @@ object AngConfigManager {
                     Utils.encode(json)
                 }
                 EConfigType.CUSTOM -> ""
+                EConfigType.RAW-> ""
                 EConfigType.SHADOWSOCKS -> {
                     val remark = "#" + Utils.urlEncode(config.remarks)
                     val pw = Utils.encode("${outbound.getSecurityEncryption()}:${outbound.getPassword()}")
